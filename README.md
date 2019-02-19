@@ -307,60 +307,422 @@ Restart the stopped server:
 az webapp start -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_1}
 ```
 
-# Project Name
+## Scale Stateful Java Apps on Azure
 
-(short, 1-3 sentenced, description of the project)
+External data stores, such as Redis Cache, Mongo DB or MySQL, 
+can be used as an external cache for containers, such as Spring Boot, 
+Tomcat and WildFly/JBoss. This allows external data store to store 
+HTTP Sessions, among other data, independent of the application layer, 
+which provides multiple benefits:
 
-## Features
+#### Application Composability - Multiple Apps of Service
 
-This project framework provides the following features:
+By externalizing sessions and using multiple apps that form a service and 
+bouncing users across these apps, you
+can realize scenarios such as shopping cart state 
+traveling with users as they navigate experiences
+through multiple apps.
 
-* Feature 1
-* Feature 2
-* ...
+#### Application Elasticity
 
-## Getting Started
+By making the application stateless additional Web apps may be added to 
+the service cluster without expensive data rebalancing operations. The 
+service cluster may also be replaced without downtime by keeping the 
+state in the external data store, as upgraded Web apps may be brought 
+online and retrieve the sessions.
 
-### Prerequisites
+#### Failover Across Data Centers
 
-(ideally very short, if any)
+Should a data center become unavailable the session data persists, 
+as it is stored safely within the external data store. This allows a 
+load balancer to redirect incoming requests to a second cluster to 
+retrieve the session information.
 
-- OS
-- Library version
-- ...
+#### Reduced Memory Footprint
 
-### Installation
+There is reduced memory pressure, resulting in shorter garbage 
+collection time and frequency of collections, as the HTTP Sessions 
+have been moved out of the application layer and into the backing caches.
 
-(ideally very short)
+#### Flexibility of External Data Store
 
-- npm install [package name]
-- mvn install
-- ...
+External data store such as Azure Redis Cache is available in 
+[multiple tiers](https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/cache-overview#azure-cache-for-redis-offerings). 
+“Premium tier Caches support more features and have higher throughput with 
+lower latencies.” See [What Azure Cache for Redis offering and size should I use?](https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/cache-faq#what-azure-cache-for-redis-offering-and-size-should-i-use)
 
-### Quickstart
-(Add steps to get up and running quickly)
+### Externalize Sessions to Azure Redis Cache
 
-1. git clone [repository clone url]
-2. cd [respository name]
-3. ...
+#### Create Redis Cache
+
+```bash
+
+# create redis cache
+az redis create \
+    --name ${REDIS_CACHE_NAME} \
+    --resource-group ${RESOURCEGROUP_NAME} \
+    --location ${REGION_1} \
+    --vm-size C1 --sku Standard
 
 
-## Demo
+az redis show \
+    --name ${REDIS_CACHE_NAME} \
+    --resource-group ${RESOURCEGROUP_NAME}
 
-A demo app is included to show how to use the project.
+# get redis password
+az redis list-keys \
+    --name ${REDIS_CACHE_NAME} \
+    --resource-group ${RESOURCEGROUP_NAME}
 
-To run the demo, follow these steps:
+{
+  "primaryKey": "======= MASKED =======",
+  "secondaryKey": "======= MASKED ======="
+}
+    
+```
 
-(Add steps to start up the demo)
+Copy the primary key and set it as `REDIS_PASSWORD` in the 
+'.scripts/set-env-variables.sh' file and export it to the
+environment.
 
-1.
-2.
-3.
+```bash
+source .scripts/set-env-variables.sh
+```
 
-## Resources
+#### Externalize Sessions to Redis Cache
 
-(Any additional resources or related projects)
+Configure Tomcat's 'src/main/webapp/META-INF/context.xml' to 
+externalize sessions to Redis Cache:
 
-- Link to supporting information
-- Link to similar sample
-- ...
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Context path="">
+    <!-- Specify Redis Store -->
+    <Valve className="com.gopivotal.manager.SessionFlushValve" />
+    <Manager className="org.apache.catalina.session.PersistentManager">
+        <Store className="com.gopivotal.manager.redis.RedisStore"
+               connectionPoolSize="20"
+               host="${REDIS_CACHE_NAME}.redis.cache.windows.net"
+               port="${REDIS_PORT}"
+               password="${REDIS_PASSWORD}"
+               sessionKeyPrefix="${REDIS_SESSION_KEY_PREFIX}"
+               timeout="2000"
+        />
+    </Manager>
+</Context>
+```
+
+Create an XML file 'context.xml' with the above contents in 
+the 'src/main/webapp/META-INF/' directory.
+
+#### Upload Redis Cache Session Manager Binary to App Service Linux
+
+We will use 
+[Pivotal Session Manager - Redis Store](https://github.com/pivotalsoftware/session-managers/tree/master/redis-store)
+to externalize sessions. Upload Pivotal Session Manage to 
+App Service Linux. You can find the JAR at the 
+[Pivotal GitHub Repo](https://github.com/pivotalsoftware/session-managers/tree/master/redis-store). 
+For your convenience, you will find the JAR in [initial/stateful-java-web-app/.scripts](https://github.com/selvasingh/scaling-stateful-java-web-app-on-azure/tree/master/.prep/initial/stateful-java-web-app/.scripts) folder.
+
+##### Upload Session Manager Binary Artifact to First App through FTP
+
+Use Azure CLI to get FTP deployment credentials:
+
+```bash
+az webapp deployment list-publishing-profiles -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_1}
+
+[
+   ...
+    "profileName": "stateful-java-web-app-eastus - FTP",
+    "publishMethod": "FTP",
+    "publishUrl": "ftp://waws-prod-blu-089.ftp.azurewebsites.windows.net/site/wwwroot",
+    "userName": "stateful-java-web-app-eastus\\$stateful-java-web-app-eastus",
+    "userPWD": "======= MASKED =======",
+    "webSystem": "WebSites"
+  }
+]
+
+```
+
+Open an FTP connection to App Service Linux to upload artifacts:
+
+```bash
+cd .scripts
+
+ftp> open waws-prod-blu-089.ftp.azurewebsites.windows.net
+Trying 52.168.126.86...
+Connected to waws-prod-blu-089.drip.azurewebsites.windows.net.
+220 Microsoft FTP Service
+Name (waws-prod-blu-089.ftp.azurewebsites.windows.net:selvasingh): stateful-java-web-app-eastus\\$stateful-java-web-app-eastus
+331 Password required
+Password:
+230 User logged in.
+Remote system type is Windows_NT.
+ftp> mkdir tomcat
+257 "tomcat" directory created.
+ftp> cd tomcat
+250 CWD command successful.
+ftp> mkdir lib
+257 "lib" directory created.
+ftp> cd lib
+250 CWD command successful.
+ftp> bin
+200 Type set to I.
+ftp> put redis-store-1.3.2.RELEASE.jar
+local: redis-store-1.3.2.RELEASE.jar remote: redis-store-1.3.2.RELEASE.jar
+229 Entering Extended Passive Mode (|||10167|)
+125 Data connection already open; Transfer starting.
+100% |*********************************************************|   794 KiB  563.15 KiB/s    00:00 ETA
+226 Transfer complete.
+813185 bytes sent in 00:01 (498.59 KiB/s)
+ftp> bye
+221 Goodbye.
+
+```
+
+##### Upload Session Manager Binary Artifact to Second App through FTP
+
+Similarly, upload session manager binary artifact to second app:
+
+```bash
+
+az webapp deployment list-publishing-profiles -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_2}
+
+...
+
+ftp> open waws-prod-blu-089.ftp.azurewebsites.windows.net
+...
+ftp> put redis-store-1.3.2.RELEASE.jar
+local: redis-store-1.3.2.RELEASE.jar remote: redis-store-1.3.2.RELEASE.jar
+229 Entering Extended Passive Mode (|||10167|)
+125 Data connection already open; Transfer starting.
+100% |*********************************************************|   794 KiB  563.15 KiB/s    00:00 ETA
+226 Transfer complete.
+813185 bytes sent in 00:01 (498.59 KiB/s)
+ftp> bye
+221 Goodbye.
+
+```
+
+##### Disable Session Affinity Cookie (ARR cookie) for App Service Linux
+
+```bash
+az webapp update -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_1} --client-affinity-enabled false
+az webapp update -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_2} --client-affinity-enabled false
+```
+
+##### Rebuild and Re-deploy the Stateful Java Web App to First Data Center
+
+```bash
+mvn package
+
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Building Stateful-Tracker 1.0.0-SNAPSHOT
+[INFO] ------------------------------------------------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ Stateful-Tracker ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 1 resource
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.8.0:compile (default-compile) @ Stateful-Tracker ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 2 source files to /Users/selvasingh/scaling-stateful-java-web-app-on-azure/initial/stateful-java-web-app/target/classes
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:testResources (default-testResources) @ Stateful-Tracker ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] skip non existing resourceDirectory /Users/selvasingh/scaling-stateful-java-web-app-on-azure/initial/stateful-java-web-app/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.8.0:testCompile (default-testCompile) @ Stateful-Tracker ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- maven-surefire-plugin:2.12.4:test (default-test) @ Stateful-Tracker ---
+[INFO] No tests to run.
+[INFO] 
+[INFO] --- maven-war-plugin:3.2.2:war (default-war) @ Stateful-Tracker ---
+[INFO] Packaging webapp
+[INFO] Assembling webapp [Stateful-Tracker] in [/Users/selvasingh/scaling-stateful-java-web-app-on-azure/initial/stateful-java-web-app/target/Stateful-Tracker-1.0.0-SNAPSHOT]
+[INFO] Processing war project
+[INFO] Copying webapp resources [/Users/selvasingh/scaling-stateful-java-web-app-on-azure/initial/stateful-java-web-app/src/main/webapp]
+[INFO] Webapp assembled in [131 msecs]
+[INFO] Building war: /Users/selvasingh/scaling-stateful-java-web-app-on-azure/initial/stateful-java-web-app/target/Stateful-Tracker-1.0.0-SNAPSHOT.war
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 2.330 s
+[INFO] Finished at: 2019-02-18T23:01:36-08:00
+[INFO] Final Memory: 18M/214M
+[INFO] ------------------------------------------------------------------------
+
+```
+
+Update the `pom.xml` to upload app settings, particularly secrets
+to connect with Azure Redis Cache:
+
+```xml
+<plugin>
+    <groupId>com.microsoft.azure</groupId>
+             <artifactId>azure-webapp-maven-plugin</artifactId>
+             <version>1.5.3</version>
+             <configuration>
+         
+                 <!-- Web App information -->
+                 <resourceGroup>${RESOURCEGROUP_NAME}</resourceGroup>
+                 <appServicePlanName>${WEBAPP_PLAN_NAME}-${REGION}</appServicePlanName>
+                 <appName>${WEBAPP_NAME}-${REGION}</appName>
+                 <region>${REGION}</region>
+                 <linuxRuntime>tomcat 9.0-jre8</linuxRuntime>
+         
+                 <appSettings>
+                     <property>
+                         <name>REDIS_CACHE_NAME</name>
+                         <value>${REDIS_CACHE_NAME}</value>
+                     </property>
+                     <property>
+                         <name>REDIS_PORT</name>
+                         <value>${REDIS_PORT}</value>
+                     </property>
+                     <property>
+                         <name>REDIS_PASSWORD</name>
+                         <value>${REDIS_PASSWORD}</value>
+                     </property>
+                     <property>
+                         <name>REDIS_SESSION_KEY_PREFIX</name>
+                         <value>${REDIS_SESSION_KEY_PREFIX}</value>
+                     </property>
+                     <property>
+                         <name>JAVA_OPTS</name>
+                         <value>-Xms2048m -Xmx2048m -DREDIS_CACHE_NAME=${REDIS_CACHE_NAME} -DREDIS_PORT=${REDIS_PORT} -DREDIS_PASSWORD=${REDIS_PASSWORD} -DREDIS_SESSION_KEY_PREFIX=${REDIS_SESSION_KEY_PREFIX}</value>
+                     </property>
+         
+                 </appSettings>
+         
+             </configuration>
+         </plugin>
+```
+
+Re-deploy the stateful Java Web app to the first data center:
+
+```bash
+mvn azure-webapp:deploy -DREGION=${REGION_1}
+
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Building Stateful-Tracker 1.0.0-SNAPSHOT
+[INFO] ------------------------------------------------------------------------
+[INFO] 
+[INFO] --- azure-webapp-maven-plugin:1.5.3:deploy (default-cli) @ Stateful-Tracker ---
+[INFO] Authenticate with Azure CLI 2.0
+[INFO] Updating target Web App...
+[INFO] Successfully updated Web App.
+[INFO] Trying to deploy artifact to stateful-java-web-app-westus...
+[INFO] Deploying the war file...
+[INFO] Successfully deployed the artifact to https://stateful-java-web-app-westus.azurewebsites.net
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 55.494 s
+[INFO] Finished at: 2019-02-18T23:11:31-08:00
+[INFO] Final Memory: 68M/646M
+[INFO] ------------------------------------------------------------------------
+
+
+# stop and start the first app
+az webapp stop -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_1}
+az webapp start -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_1}
+
+```
+
+##### Re-deploy the Stateful Java Web App to Second Data Center
+
+Similarly, redeploy the stateful Java Web app to second data center:
+
+```bash
+mvn azure-webapp:deploy -DREGION=${REGION_2}
+
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Building Stateful-Tracker 1.0.0-SNAPSHOT
+[INFO] ------------------------------------------------------------------------
+[INFO] 
+[INFO] --- azure-webapp-maven-plugin:1.5.3:deploy (default-cli) @ Stateful-Tracker ---
+[INFO] Authenticate with Azure CLI 2.0
+[INFO] Updating target Web App...
+[INFO] Successfully updated Web App.
+[INFO] Trying to deploy artifact to stateful-java-web-app-eastus...
+[INFO] Deploying the war file...
+[INFO] Successfully deployed the artifact to https://stateful-java-web-app-eastus.azurewebsites.net
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 50.840 s
+[INFO] Finished at: 2019-02-18T23:24:16-08:00
+[INFO] Final Memory: 67M/645M
+[INFO] ------------------------------------------------------------------------
+
+# stop and start the first app
+az webapp stop -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_2}
+az webapp start -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_2}
+
+```
+
+#### Open Scaled Stateful Java Web Apps on Azure
+
+Open the Traffic Manager profile endpoint:
+
+```bash
+open http://stateful-java-web-app.trafficmanager.net
+```
+![](./media/Cloud-Scale-Web-App-Session-Management-3.jpg)
+
+Let us stop one of the stateful Java Web app and check how 
+failover happens:
+
+```bash
+az webapp stop -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_1}
+```
+
+Traffic Manager Profile should look like this:
+
+![](./media/Traffic-Manager-Endpoints-Microsoft-Azure-2.jpg)
+
+Refresh the browser:
+
+![](./media/Cloud-Scale-Web-App-Session-Management-4.jpg)
+
+Failover SUCCEEDED because the session tracking begins,
+particularly, once the connection breaks, the client 
+is round robined to another server in East US data center,
+then the correlation is continued, tracks to `Number of Visits = 2`, 
+using externalized sessions.
+
+# Resources
+
+- [Servlets - Session Tracking](https://www.tutorialspoint.com/servlets/servlets-session-tracking.htm)
+- [Persistent Sessions](https://www.oxxus.net/tutorials/tomcat/persistent-sessions)
+- [Scaling Stateful Services](https://www.infoq.com/news/2015/11/scaling-stateful-services)
+- [Pivotal Session Managers: redis-store](https://github.com/pivotalsoftware/session-managers/tree/master/redis-store)
+- [Externalize Sessions](https://access.redhat.com/documentation/en-us/red_hat_data_grid/7.1/html/administration_and_configuration_guide/externalize_sessions)
+- [Cloud Scale Azure Redis Cache](https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/cache-overview#azure-cache-for-redis-offerings)
+- [Java Developer Guide for App Service on Linux](https://docs.microsoft.com/en-us/azure/app-service/containers/app-service-linux-java)
+- [Maven Plugin for Azure App Service](https://docs.microsoft.com/en-us/java/api/overview/azure/maven/azure-webapp-maven-plugin/readme?view=azure-java-stable)
+- [Opening an SSH connection from your development machine](https://docs.microsoft.com/en-us/azure/app-service/containers/app-service-linux-ssh-support#open-ssh-session-from-remote-shell)
+- [Azure for Java Developers](https://docs.microsoft.com/en-us/java/azure/)
+
+
+# Contributing
+
+This project welcomes contributions and suggestions.  Most contributions require you to agree to a
+Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
+the rights to use your contribution. For details, visit https://cla.microsoft.com.
+
+When you submit a pull request, a CLA-bot will automatically determine whether you need to provide
+a CLA and decorate the PR appropriately (e.g., label, comment). Simply follow the instructions
+provided by the bot. You will only need to do this once across all repos using our CLA.
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
+contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
