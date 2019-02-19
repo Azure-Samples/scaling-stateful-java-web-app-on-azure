@@ -37,12 +37,12 @@ stateful Java apps on Azure, aka:
             * [Upload Redis Cache Session Manager Binary to App Service Linux](#upload-redis-cache-session-manager-binary-to-app-service-linux)
                * [Upload Session Manager Binary Artifact to First App through FTP](#upload-session-manager-binary-artifact-to-first-app-through-ftp)
                * [Upload Session Manager Binary Artifact to Second App through FTP](#upload-session-manager-binary-artifact-to-second-app-through-ftp)
-               * [Disable Session Affinity Cookie (ARR cookie) for App Service Linux](#disable-session-affinity-cookie-arr-cookie-for-app-service-linux)
-               * [Setup Redis Cache Firewall Rules for Java Web Apps](#setup-redis-cache-firewall-rules-for-java-web-apps)
-                  * [Retrieve Java Web Apps Outbound IP Addresses](#retrieve-java-web-apps-outbound-ip-addresses)
-                  * [Setup Redis Cache Firewall Rules for Outbound IP Addresses](#setup-redis-cache-firewall-rules-for-outbound-ip-addresses)
-               * [Rebuild and Re-deploy the Stateful Java Web App to First Data Center](#rebuild-and-re-deploy-the-stateful-java-web-app-to-first-data-center)
-               * [Re-deploy the Stateful Java Web App to Second Data Center](#re-deploy-the-stateful-java-web-app-to-second-data-center)
+            * [Disable Session Affinity Cookie (ARR cookie) for App Service Linux](#disable-session-affinity-cookie-arr-cookie-for-app-service-linux)
+            * [Setup Redis Cache Firewall Rules for Java Web Apps](#setup-redis-cache-firewall-rules-for-java-web-apps)
+               * [Retrieve Java Web Apps Outbound IP Addresses](#retrieve-java-web-apps-outbound-ip-addresses)
+               * [Setup Redis Cache Firewall Rules for Outbound IP Addresses](#setup-redis-cache-firewall-rules-for-outbound-ip-addresses)
+            * [Rebuild and Re-deploy the Stateful Java Web App to First Data Center](#rebuild-and-re-deploy-the-stateful-java-web-app-to-first-data-center)
+            * [Re-deploy the Stateful Java Web App to Second Data Center](#re-deploy-the-stateful-java-web-app-to-second-data-center)
             * [Open Scaled Stateful Java Web Apps on Azure](#open-scaled-stateful-java-web-apps-on-azure)
       * [Congratulations!](#congratulations)
       * [Resources](#resources)
@@ -537,18 +537,18 @@ ftp> bye
 
 ```
 
-##### Disable Session Affinity Cookie (ARR cookie) for App Service Linux
+#### Disable Session Affinity Cookie (ARR cookie) for App Service Linux
 
 ```bash
 az webapp update -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_1} --client-affinity-enabled false
 az webapp update -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_2} --client-affinity-enabled false
 ```
 
-##### Setup Redis Cache Firewall Rules for Java Web Apps
+#### Setup Redis Cache Firewall Rules for Java Web Apps
 
 Setup Redis Cache firewall rules for Java Web apps to access the cache.
 
-###### Retrieve Java Web Apps Outbound IP Addresses
+##### Retrieve Java Web Apps Outbound IP Addresses
 
 You can get a list of possible outbound IP addresses for 
 Java Web Apps using the Azure Portal - Web App => Properties:
@@ -558,7 +558,7 @@ Java Web Apps using the Azure Portal - Web App => Properties:
 Each Web app has 9 possible outbound IP address. Write them down for both
 Java Web apps.
 
-###### Setup Redis Cache Firewall Rules for Outbound IP Addresses
+##### Setup Redis Cache Firewall Rules for Outbound IP Addresses
 
 Use Azure CLI to create Redis Cache firewall rules for all 
 18 possible outbound IP addresses:
@@ -598,7 +598,7 @@ az redis firewall-rules create \
 
 ```
 
-##### Rebuild and Re-deploy the Stateful Java Web App to First Data Center
+#### Rebuild and Re-deploy the Stateful Java Web App to First Data Center
 
 ```bash
 mvn package
@@ -722,7 +722,7 @@ az webapp start -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_1}
 
 ```
 
-##### Re-deploy the Stateful Java Web App to Second Data Center
+#### Re-deploy the Stateful Java Web App to Second Data Center
 
 Similarly, redeploy the stateful Java Web app to second data center:
 
