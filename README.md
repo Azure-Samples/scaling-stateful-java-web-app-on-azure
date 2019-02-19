@@ -14,6 +14,39 @@ stateful Java apps on Azure, aka:
 
 ## Table of Contents
 
+   * [Scaling Stateful Java Apps on Azure](#scaling-stateful-java-apps-on-azure)
+      * [Table of Contents](#table-of-contents)
+      * [What you will migrate to cloud](#what-you-will-migrate-to-cloud)
+      * [What you will need](#what-you-will-need)
+      * [Getting Started](#getting-started)
+         * [Step ONE - Clone and Prep](#step-one---clone-and-prep)
+      * [Build Scalable Layout for Stateful Java Apps on Azure](#build-scalable-layout-for-stateful-java-apps-on-azure)
+            * [Build the Stateful Java Web App:](#build-the-stateful-java-web-app)
+            * [Deploy the Stateful Java Web App to First Data Center:](#deploy-the-stateful-java-web-app-to-first-data-center)
+            * [Deploy the Stateful Java Web App to Second Data Center:](#deploy-the-stateful-java-web-app-to-second-data-center)
+            * [Cluster Stateful Java Web Apps Behind Traffic Manager:](#cluster-stateful-java-web-apps-behind-traffic-manager)
+      * [Scale Stateful Java Apps on Azure](#scale-stateful-java-apps-on-azure)
+            * [Application Composability - Multiple Apps of Service](#application-composability---multiple-apps-of-service)
+            * [Application Elasticity](#application-elasticity)
+            * [Failover Across Data Centers](#failover-across-data-centers)
+            * [Reduced Memory Footprint](#reduced-memory-footprint)
+            * [Flexibility of External Data Store](#flexibility-of-external-data-store)
+         * [Externalize Sessions to Azure Redis Cache](#externalize-sessions-to-azure-redis-cache)
+            * [Create Redis Cache](#create-redis-cache)
+            * [Externalize Sessions to Redis Cache](#externalize-sessions-to-redis-cache)
+            * [Upload Redis Cache Session Manager Binary to App Service Linux](#upload-redis-cache-session-manager-binary-to-app-service-linux)
+               * [Upload Session Manager Binary Artifact to First App through FTP](#upload-session-manager-binary-artifact-to-first-app-through-ftp)
+               * [Upload Session Manager Binary Artifact to Second App through FTP](#upload-session-manager-binary-artifact-to-second-app-through-ftp)
+               * [Disable Session Affinity Cookie (ARR cookie) for App Service Linux](#disable-session-affinity-cookie-arr-cookie-for-app-service-linux)
+               * [Setup Redis Cache Firewall Rules for Java Web Apps](#setup-redis-cache-firewall-rules-for-java-web-apps)
+                  * [Retrieve Java Web Apps Outbound IP Addresses](#retrieve-java-web-apps-outbound-ip-addresses)
+                  * [Setup Redis Cache Firewall Rules for Outbound IP Addresses](#setup-redis-cache-firewall-rules-for-outbound-ip-addresses)
+               * [Rebuild and Re-deploy the Stateful Java Web App to First Data Center](#rebuild-and-re-deploy-the-stateful-java-web-app-to-first-data-center)
+               * [Re-deploy the Stateful Java Web App to Second Data Center](#re-deploy-the-stateful-java-web-app-to-second-data-center)
+            * [Open Scaled Stateful Java Web Apps on Azure](#open-scaled-stateful-java-web-apps-on-azure)
+      * [Congratulations!](#congratulations)
+      * [Resources](#resources)
+      * [Contributing](#contributing)
 
 ## What you will migrate to cloud
 
@@ -511,6 +544,60 @@ az webapp update -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_1} --client
 az webapp update -g ${RESOURCEGROUP_NAME} -n ${WEBAPP_NAME}-${REGION_2} --client-affinity-enabled false
 ```
 
+##### Setup Redis Cache Firewall Rules for Java Web Apps
+
+Setup Redis Cache firewall rules for Java Web apps to access the cache.
+
+###### Retrieve Java Web Apps Outbound IP Addresses
+
+You can get a list of possible outbound IP addresses for 
+Java Web Apps using the Azure Portal - Web App => Properties:
+
+![](./media/web-app-outbound-ip-addresses.jpg)
+
+Each Web app has 9 possible outbound IP address. Write them down for both
+Java Web apps.
+
+###### Setup Redis Cache Firewall Rules for Outbound IP Addresses
+
+Use Azure CLI to create Redis Cache firewall rules for all 
+18 possible outbound IP addresses:
+
+```bash
+# firewall rules for the first Java Web app
+az redis firewall-rules create \
+    --name ${REDIS_CACHE_NAME} \
+    --resource-group ${RESOURCEGROUP_NAME} \
+    --rule-name ${WEBAPP_NAME}-${REGION_1}-IP1 \
+    --start-ip <ip-address-1> \
+    --end-ip <ip-address-1>
+...
+...
+az redis firewall-rules create \
+    --name ${REDIS_CACHE_NAME} \
+    --resource-group ${RESOURCEGROUP_NAME} \
+    --rule-name ${WEBAPP_NAME}-${REGION_1}-IP9 \
+    --start-ip <ip-address-9> \
+    --end-ip <ip-address-9>
+        
+# firewall rules for the second Java Web app
+az redis firewall-rules create \
+    --name ${REDIS_CACHE_NAME} \
+    --resource-group ${RESOURCEGROUP_NAME} \
+    --rule-name ${WEBAPP_NAME}-${REGION_2}-IP1 \
+    --start-ip <ip-address-1> \
+    --end-ip <ip-address-1>
+...
+...
+az redis firewall-rules create \
+    --name ${REDIS_CACHE_NAME} \
+    --resource-group ${RESOURCEGROUP_NAME} \
+    --rule-name ${WEBAPP_NAME}-${REGION_2}-IP9 \
+    --start-ip <ip-address-9> \
+    --end-ip <ip-address-9>
+
+```
+
 ##### Rebuild and Re-deploy the Stateful Java Web App to First Data Center
 
 ```bash
@@ -698,6 +785,10 @@ particularly, once the connection breaks, the client
 is round robined to another server in East US data center,
 then the correlation is continued, tracks to `Number of Visits = 2`, 
 using externalized sessions.
+
+When you are finished, you can check your results 
+against YOUR code in 
+[scaling-stateful-java-web-app-on-azure/complete](https://github.com/Azure-Samples/scaling-stateful-java-web-app-on-azure/tree/master/complete).
 
 ## Congratulations!
 
