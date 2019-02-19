@@ -1,3 +1,30 @@
+---
+services: app-service, redis-cache
+platforms: java
+author: selvasingh
+---
+
+# Scaling Stateful Java Apps on Azure
+
+This guide walks you through the process of scaling 
+stateful Java apps on Azure, aka:
+ 
+- Migrate or deploy stateful Java apps to App Service Linux
+- Externalize HTTP sessions to Azure Redis Cache 
+
+## Table of Contents
+
+
+## What you will migrate to cloud
+
+You will migrate stateful Java apps to Azure, scale it 
+across geographies
+and demo failover across data centers. These
+ apps use:
+
+- Java Servlet (JSR 369)
+- Java EE 7
+
 # Project Name
 
 (short, 1-3 sentenced, description of the project)
