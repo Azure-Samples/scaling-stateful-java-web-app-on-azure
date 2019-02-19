@@ -27,4 +27,6 @@ hs_err_pid*
 
 # Scripts
 initial/stateful-java-web-app/.scripts/*
+initial/stateful-java-web-app/*.sh
 complete/stateful-java-web-app/.scripts/*
+complete/stateful-java-web-app/*.sh
