@@ -699,7 +699,13 @@ is round robined to another server in East US data center,
 then the correlation is continued, tracks to `Number of Visits = 2`, 
 using externalized sessions.
 
-# Resources
+## Congratulations!
+
+Congratulations!! You migrated 
+existing Java enterprise workloads to Azure, aka stateful Java app to App Service Linux and 
+app's externalized session store to Azure Redis Cache.
+
+## Resources
 
 - [Servlets - Session Tracking](https://www.tutorialspoint.com/servlets/servlets-session-tracking.htm)
 - [Persistent Sessions](https://www.oxxus.net/tutorials/tomcat/persistent-sessions)
@@ -713,7 +719,7 @@ using externalized sessions.
 - [Azure for Java Developers](https://docs.microsoft.com/en-us/java/azure/)
 
 
-# Contributing
+## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
