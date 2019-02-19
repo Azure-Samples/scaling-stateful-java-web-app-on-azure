@@ -66,6 +66,62 @@ cd scaling-stateful-java-web-app-on-azure
 yes | cp -rf .prep/* .
 ```
 
+## Build Scalable Layout for Stateful Java Apps on Azure
+
+Build the Stateful Java Web app:
+
+```bash
+
+# change to initial directory
+cd initial/stateful-java-web-app
+
+# build WAR package
+mvn package
+
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Building Stateful-Tracker 1.0.0-SNAPSHOT
+[INFO] ------------------------------------------------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ Stateful-Tracker ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 1 resource
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.8.0:compile (default-compile) @ Stateful-Tracker ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 2 source files to /Users/selvasingh/scaling-stateful-java-web-app-on-azure/initial/stateful-java-web-app/target/classes
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:testResources (default-testResources) @ Stateful-Tracker ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] skip non existing resourceDirectory /Users/selvasingh/scaling-stateful-java-web-app-on-azure/initial/stateful-java-web-app/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.8.0:testCompile (default-testCompile) @ Stateful-Tracker ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- maven-surefire-plugin:2.12.4:test (default-test) @ Stateful-Tracker ---
+[INFO] No tests to run.
+[INFO] 
+[INFO] --- maven-war-plugin:3.2.2:war (default-war) @ Stateful-Tracker ---
+[INFO] Packaging webapp
+[INFO] Assembling webapp [Stateful-Tracker] in [/Users/selvasingh/scaling-stateful-java-web-app-on-azure/initial/stateful-java-web-app/target/Stateful-Tracker-1.0.0-SNAPSHOT]
+[INFO] Processing war project
+[INFO] Copying webapp resources [/Users/selvasingh/scaling-stateful-java-web-app-on-azure/initial/stateful-java-web-app/src/main/webapp]
+[INFO] Webapp assembled in [67 msecs]
+[INFO] Building war: /Users/selvasingh/scaling-stateful-java-web-app-on-azure/initial/stateful-java-web-app/target/Stateful-Tracker-1.0.0-SNAPSHOT.war
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 2.963 s
+[INFO] Finished at: 2019-02-18T21:44:22-08:00
+[INFO] Final Memory: 20M/308M
+[INFO] ------------------------------------------------------------------------
+
+```
+
+Deploy the Stateful Java Web app to the first data center:
+
+
 
 # Project Name
 

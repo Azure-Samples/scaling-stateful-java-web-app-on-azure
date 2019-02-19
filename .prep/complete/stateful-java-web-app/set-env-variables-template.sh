@@ -5,8 +5,8 @@ export TOMCAT_HOME=<your-tomcat-directory>
 # Supply - Azure Environment
 export SUBSCRIPTION_ID=<your-subscription-id>
 export RESOURCEGROUP_NAME=<your-resource-group-name>
-export REGION_1=<your-region-1>
-export REGION_2=<your-region-2>
+export REGION_1=westus
+export REGION_2=eastus
 
 # Supply - App Service App Name
 export WEBAPP_NAME=<your-webapp-name>
