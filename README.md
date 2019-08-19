@@ -83,7 +83,6 @@ In addition, you will need the following:
 | [Java 8](https://www.azul.com/downloads/azure-only/zulu/) 
 | [Maven 3](http://maven.apache.org/) 
 | [Git](https://github.com/)
-|
 
 ## Getting Started
 
@@ -395,8 +394,8 @@ az redis create \
     --name ${REDIS_CACHE_NAME} \
     --resource-group ${RESOURCEGROUP_NAME} \
     --location ${REGION_1} \
-    --vm-size C1 --sku Standard
-
+    --vm-size C1 --sku Standard \
+    --enable-non-ssl-port
 
 az redis show \
     --name ${REDIS_CACHE_NAME} \
