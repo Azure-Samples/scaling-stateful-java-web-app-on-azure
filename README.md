@@ -1,7 +1,11 @@
 ---
-services: app-service, redis-cache
-platforms: java
-author: selvasingh
+page_type: sample
+languages:
+- 
+products:
+- azure
+description: "This guide walks you through the process of scaling stateful Java apps on Azure, aka:"
+urlFragment: scaling-stateful-java-web-app-on-azure
 ---
 
 # Scaling Stateful Java Apps on Azure
