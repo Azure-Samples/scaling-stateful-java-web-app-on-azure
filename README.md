@@ -195,16 +195,33 @@ Tomcat in App Service Linux:
 <plugin>
     <groupId>com.microsoft.azure</groupId>
     <artifactId>azure-webapp-maven-plugin</artifactId>
-    <version>1.5.3</version>
+    <version>2.5.0</version>
     <configuration>
 
         <!-- Web App information -->
-        <resourceGroup>${RESOURCEGROUP_NAME}</resourceGroup>
-        <appServicePlanName>${WEBAPP_PLAN_NAME}-${REGION}</appServicePlanName>
-        <appName>${WEBAPP_NAME}-${REGION}</appName>
-        <region>${REGION}</region>
-        <linuxRuntime>tomcat 9.0-jre8</linuxRuntime>
-
+    <schemaVersion>v2</schemaVersion>
+    <subscriptionId>${SUBSCRIPTION_ID}</subscriptionId>
+    <resourceGroup>${RESOURCEGROUP_NAME}</resourceGroup>
+    <appName>${WEBAPP_NAME}-${REGION}</appName>
+    <pricingTier>P1v2</pricingTier>
+    <region>${REGION}</region>
+    <appServicePlanName>${WEBAPP_PLAN_NAME}-${REGION}</appServicePlanName>
+    <appServicePlanResourceGroup>${RESOURCEGROUP_NAME}</appServicePlanResourceGroup>
+    <runtime>
+        <os>Linux</os>
+        <javaVersion>Java 8</javaVersion>
+        <webContainer>Tomcat 9.0</webContainer>
+    </runtime>
+    <deployment>
+        <resources>
+        <resource>
+            <directory>${project.basedir}/target</directory>
+            <includes>
+            <include>*.war</include>
+            </includes>
+        </resource>
+        </resources>
+    </deployment>
         <appSettings>
             <property>
                 <name>JAVA_OPTS</name>
