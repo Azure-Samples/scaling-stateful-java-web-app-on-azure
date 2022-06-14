@@ -97,7 +97,7 @@ familiar with. Either way, you will end up with working code.
 ### Step ONE - Clone and Prep
 
 ```bash
-git clone --recurse-submodules https://github.com/Azure-Samples/scaling-stateful-java-web-app-on-azure
+git clone --recurse-submodules --remote https://github.com/Azure-Samples/scaling-stateful-java-web-app-on-azure
 cd scaling-stateful-java-web-app-on-azure
 yes | cp -rf .prep/* .
 ```
